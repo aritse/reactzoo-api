@@ -1,12 +1,17 @@
 const express = require("express");
 const cors = require("cors");
+const bcrypt = require("bcrypt");
 
 const app = express();
-// app.use(cors({ origin: ["http://localhost:3000"] }));
-app.use(cors({ origin: ["https://zoo-react-ari.herokuapp.com"] }));
+// app.use(cors({ origin: ["https://zoo-react-ari.herokuapp.com"] })); // enable for production
+app.use(
+  cors({
+    origin: ["http://localhost:3000"],
+    credentials: true
+  })
+);
 
 const db = require("./models");
-
 const PORT = process.env.PORT || 8080;
 
 app.use(express.urlencoded({ extended: true }));
@@ -24,71 +29,33 @@ app.get("/api/animals/class/:className", (req, res) => {
   }).then(mammals => res.json(mammals));
 });
 
-app.get("/seed", (req, res) => {
-  const animals = [
-    {
-      species: "zebra",
-      class: "mammal",
-      eatsMeat: false,
-      weight: 200
-    },
-    {
-      species: "lion",
-      class: "mammal",
-      eatsMeat: true,
-      weight: 150
-    },
-    {
-      species: "whale shark",
-      class: "fish",
-      eatsMeat: false,
-      weight: 5000
-    },
-    {
-      species: "penguin",
-      class: "bird",
-      eatsMeat: true,
-      weight: 5
-    },
-    {
-      species: "bald eagle",
-      class: "bird",
-      eatsMeat: true,
-      weight: 10
-    },
-    {
-      species: "banana slug",
-      class: "insect",
-      eatsMeat: false,
-      weight: 1
-    },
-    {
-      species: "manatee",
-      class: "mammal",
-      eatsMeat: false,
-      weight: 75
-    },
-    {
-      species: "gorilla",
-      class: "mammal",
-      eatsMeat: false,
-      weight: 100
-    },
-    {
-      species: "cat",
-      class: "mammal",
-      eatsMeat: true,
-      weight: 4
-    },
-    {
-      species: "frog",
-      class: "amphibian",
-      eatsMeat: false,
-      weight: 2
-    }
-  ];
+app.post("/api/animals", (req, res) => {
+  db.Animal.create(req.body).then(animal => res.json(animal));
+});
 
-  db.Animal.bulkCreate(animals).then(animals => console.log("data seeded"));
+app.delete("/api/animals/delete/:id", (req, res) => {
+  db.Animal.destroy({
+    where: {
+      id: req.params.id
+    }
+  }).then(animal => res.json(animal));
+});
+
+app.post("/api/auth/signup", (req, res) => {
+  db.User.create(req.body).then(user => res.json(user));
+});
+
+app.post("/api/auth/login", (req, res) => {
+  db.User.findOne({
+    where: { name: req.body.name }
+  }).then(dbUser => {
+    if (dbUser) {
+      if (bcrypt.compareSync(req.body.password, dbUser.password)) res.json("logged in");
+      else res.status(401).json("incorrect password");
+    } else {
+      res.status(401).json("name not found");
+    }
+  });
 });
 
 db.sequelize.sync({ force: false }).then(() => {
